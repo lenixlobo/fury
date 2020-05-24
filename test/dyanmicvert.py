@@ -30,9 +30,9 @@ sphereMapper = vtk.vtkOpenGLPolyDataMapper()
 sphereMapper.SetInputConnection(sphere.GetOutputPort())
 
 sphereActor = vtk.vtkActor()
-# sphereActor.GetProperty().SetRepresentationToWireframe()
 sphereActor.SetMapper(sphereMapper)
 
+	
 sphereActor.SetTexture(texture)
 
 
@@ -44,8 +44,6 @@ sphereMapper.AddShaderReplacement(
     """
     //VTK::PositionVC::Dec  // we still want the default
     out vec3 TexCoords;
-
-    uniform samplerCube texture_0;
     """,
     False  # only do it once
 )
@@ -57,17 +55,12 @@ sphereMapper.AddShaderReplacement(
     """
     //VTK::PositionVC::Impl  // we still want the default
     vec3 camPos = -MCVCMatrix[3].xyz * mat3(MCVCMatrix);
-    //TexCoords.xyz = reflect(vertexMC.xyz - camPos, normalize(normalMC));
-    //TexCoords.xyz = normalMC;
     TexCoords.xyz = vertexMC.xyz;
-
-    vec4 rgba = texture(texture_0, TexCoords);
-
-
 
     """,
     False  # only do it once
 )
+
 
 
 
@@ -134,8 +127,8 @@ sphereMapper.SetGeometryShaderCode("""
                 //I think the issue lies here   
                 //gl_Position = projection_matrix * (model_matrix * position);
                 
-                gl_Position =  position;
-                vertexVCGSOutput =gl_Position;
+                gl_Position = position;
+                vertexVCGSOutput = vertexVCVSOutput[i];
                 EmitVertex();
             }
 
@@ -149,6 +142,7 @@ sphereMapper.SetGeometryShaderCode("""
 
 
 
+
 sphereMapper.SetFragmentShaderCode(
     """
     //VTK::System::Dec  // always start with this line
@@ -156,16 +150,10 @@ sphereMapper.SetFragmentShaderCode(
     in vec3 TexCoords;
     uniform samplerCube texture_0;
 
-    uniform vec4 fur_color = vec4(0.3, 0.3, 0.3, 1.0);
-
     in vec4 vertexVCGSOutput;
-
+    
     void main() {
-
-    	vec4 rgba = texture(texture_0, vertexVCGSOutput.xyz);
-    	float  t = rgba.a;
-    	gl_FragData[0] = fur_color * vec4(1.0, 1.0, 0.3, t);
-        //gl_FragData[0] = texture(texture_0, TexCoords);
+        gl_FragData[0] = texture(texture_0, vertexVCGSOutput.xyz);
     }
     """
 )

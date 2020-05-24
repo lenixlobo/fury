@@ -59,16 +59,16 @@ utils.set_polydata_colors(my_polydata, my_colors)
 # set the cube to render in wireframe mode
 # get mapper from polydata
 cube_actor = utils.get_actor_from_polydata(my_polydata)
-cube_actor.GetProperty().SetRepresentationToWireframe()
+#cube_actor.GetProperty().SetRepresentationToWireframe()
 mapper = cube_actor.GetMapper()
 
 # add the cube to a scene and show it
 scene = window.Scene()
 scene.add(cube_actor)
-window.show(scene, size=(500, 500))
 
 # now we want to write a geometry shader which takes in each line from the
 # wireframe cube, discards it, and in it's place inserts a pyramid
+
 
 mapper.SetGeometryShaderCode('''
     //VTK::System::Dec
@@ -107,15 +107,15 @@ mapper.SetGeometryShaderCode('''
     {
         vec4 point1 = vec4(0.0, 0.0, 0.0, 0.0);
         vec4 point2 = vec4(0.3, 0.0, 0.0, 0.0);
-        vec4 point3 = vec4(0.0, 0.0, 3.3, 0.0);
+        vec4 point3 = vec4(0.0, 0.0, 0.3, 0.0);
         vec4 point4 = vec4(0.0, 0.3, 0.0, 0.0);
 
         gl_Position = position + (MCDCMatrix * point1);
-        vertexVCGSOutput = vertexVCVSOutput[0];
+        vertexVCGSOutput = vertexVCVSOutput[0] + (MCVCMatrix * point1);
         EmitVertex();
 
         gl_Position = position + (MCDCMatrix * point2);
-        vertexVCGSOutput = vertexVCVSOutput[0];
+        vertexVCGSOutput = vertexVCVSOutput[0] + (MCVCMatrix * point2);
         EmitVertex();
 
         gl_Position = position + (MCDCMatrix * point3);
@@ -159,4 +159,4 @@ mapper.SetGeometryShaderCode('''
 #     False
 # )
 
-window.show(scene, size=(500, 500)) 
+window.show(scene, size=(500, 500))

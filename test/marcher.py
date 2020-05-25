@@ -134,6 +134,8 @@ mapper.AddShaderReplacement(
     	float light = dot(ld, norm);
     	
     	fragOutput0 = vec4( vec3(1.0, 1.0, 1.0) *  light , 1.0);
+    	//fragOutput0 = vec4( norm, 1.0);
+    	
     }
     else{
 

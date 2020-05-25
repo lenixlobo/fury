@@ -61,6 +61,7 @@ sphereMapper.AddShaderReplacement(
     False  # only do it once
 )
 
+<<<<<<< Updated upstream
 
 
 
@@ -143,6 +144,8 @@ sphereMapper.SetGeometryShaderCode("""
 
 
 
+=======
+>>>>>>> Stashed changes
 sphereMapper.SetFragmentShaderCode(
     """
     //VTK::System::Dec  // always start with this line
@@ -150,10 +153,16 @@ sphereMapper.SetFragmentShaderCode(
     in vec3 TexCoords;
     uniform samplerCube texture_0;
 
+<<<<<<< Updated upstream
     in vec4 vertexVCGSOutput;
     
     void main() {
         gl_FragData[0] = texture(texture_0, vertexVCGSOutput.xyz);
+=======
+    
+    void main() {
+        gl_FragData[0] = texture(texture_0, TexCoords);
+>>>>>>> Stashed changes
     }
     """
 )

@@ -61,9 +61,7 @@ sphereMapper.AddShaderReplacement(
     //TexCoords.xyz = normalMC;
     TexCoords.xyz = vertexMC.xyz;
 
-    vec4 rgba = texture(texture_0, TexCoords);
-
-
+    
 
     """,
     False  # only do it once
@@ -74,7 +72,6 @@ sphereMapper.AddShaderReplacement(
 sphereMapper.SetGeometryShaderCode("""
     //VTK::System::Dec
     //VTK::PositionVC::Dec
-
     // declare coordinate transformation matrices
     
         uniform mat4 MCDCMatrix; // - gl_modelviewprojectionmatrix
@@ -110,7 +107,6 @@ sphereMapper.SetGeometryShaderCode("""
         float disp_delta = 1.0 / float(fur_layers);
         float d = 0.0;
         vec4 position;
-
         for(layer = 0; layer < fur_layers; layer++)
         {
                 //Calulate the Normal for a given face
@@ -125,19 +121,20 @@ sphereMapper.SetGeometryShaderCode("""
                 vec3 norm = cross(v1, v0);
                 norm = normalize(norm);
 
-            // For each incoming vertex (should be three of them) 
-            for(i = 0; i < gl_in.length(); i++)
-            {
-                vec4 displacement = vec4(norm * d * fur_depth, 0.0);
-                position = gl_in[i].gl_Position + displacement;
-                
-                //I think the issue lies here   
-                //gl_Position = projection_matrix * (model_matrix * position);
-                
-                gl_Position =  position;
-                vertexVCGSOutput =gl_Position;
-                EmitVertex();
-            }
+				position = vec4(norm * d * fur_depth, 0.0);
+				vec4 normposition = normalize(position);
+				
+					gl_Position = gl_in[0].gl_Position + position;
+       				//vertexVCGSOutput = vertexVCVSOutput[0] + position;
+        			EmitVertex();
+
+        			gl_Position = gl_in[1].gl_Position +  position;
+        			//vertexVCGSOutput = vertexVCVSOutput[0] + position;
+        			EmitVertex();
+
+        			gl_Position = gl_in[2].gl_Position + position;
+        			//vertexVCGSOutput = vertexVCVSOutput[0] + position;
+       				EmitVertex();
 
             d += disp_delta;
             EndPrimitive();
@@ -162,7 +159,7 @@ sphereMapper.SetFragmentShaderCode(
 
     void main() {
 
-    	vec4 rgba = texture(texture_0, vertexVCGSOutput.xyz);
+    	vec4 rgba = texture(texture_0, TexCoords);
     	float  t = rgba.a;
     	gl_FragData[0] = fur_color * vec4(1.0, 1.0, 0.3, t);
         //gl_FragData[0] = texture(texture_0, TexCoords);

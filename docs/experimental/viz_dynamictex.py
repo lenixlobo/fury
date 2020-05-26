@@ -132,7 +132,7 @@ sphereMapper.SetGeometryShaderCode("""
 	    		//gl_Position = projection_matrix * (model_matrix * position);
 	    		
 	    		gl_Position = position;
-	    		//vertexVCGSOutput = vertexVCVSOutput[i] + gl_Position;
+	    		vertexVCGSOutput = position;
 
 	    		//gl_Position = previous_position + MCDCMatrix * new_point
 	    		 
@@ -154,13 +154,13 @@ sphereMapper.SetFragmentShaderCode(
     //VTK::Output::Dec  // always have this line in your FS
     in vec3 TexCoords;
     uniform samplerCube texture_0;
-
+    in vec4 vertexVCGSOutput;
     uniform vec4 fur_color = vec4(0.3, 0.3, 0.3, 1.0);
 
 
     void main() {
 
-    	vec4 rgba = texture(texture_0, TexCoords);
+    	vec4 rgba = texture(texture_0, vertexVCGSOutput.xyz);
     	float  t = rgba.a;
 
        	gl_FragData[0] = fur_color * vec4(1.0, 1.0, 0.3, t);

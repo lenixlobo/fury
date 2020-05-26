@@ -12,7 +12,7 @@ scene.background((1.0, 0.8, 0.8))
 vertices, faces = primitive.prim_box()
 #create a actor
 box_actor = utils.get_actor_from_primitive(vertices, faces)
-center = ([5, 0, 0])
+center = ([0, 0, 0])
 
 box_actor.SetPosition(center)
 
@@ -175,7 +175,7 @@ scene.add(actor.axes())
 
 
 
-showm = window.ShowManager(scene)
+showm = window.ShowManager(scene, size=(1920, 1200))
 
 showm.initialize()
 

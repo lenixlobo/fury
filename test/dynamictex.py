@@ -12,7 +12,7 @@ scene.background((1.0, 0.8, 0.8))
 texture = vtk.vtkTexture()
 texture.CubeMapOn()
 #Noise texture
-arr =  np.random.randn(64, 64, 4)
+arr =  np.random.randn(128, 128, 4)
 
 grid = rgb_to_vtk(arr.astype(np.uint8))
 for i in range(6):
@@ -30,10 +30,8 @@ sphereMapper = vtk.vtkOpenGLPolyDataMapper()
 sphereMapper.SetInputConnection(sphere.GetOutputPort())
 
 sphereActor = vtk.vtkActor()
-# sphereActor.GetProperty().SetRepresentationToWireframe()
 sphereActor.SetMapper(sphereMapper)
 
-	
 sphereActor.SetTexture(texture)
 
 
@@ -45,8 +43,6 @@ sphereMapper.AddShaderReplacement(
     """
     //VTK::PositionVC::Dec  // we still want the default
     out vec3 TexCoords;
-
-    uniform samplerCube texture_0;
     """,
     False  # only do it once
 )
@@ -59,25 +55,21 @@ sphereMapper.AddShaderReplacement(
     //VTK::PositionVC::Impl  // we still want the default
     vec3 camPos = -MCVCMatrix[3].xyz * mat3(MCVCMatrix);
     //TexCoords.xyz = reflect(vertexMC.xyz - camPos, normalize(normalMC));
-    //TexCoords.xyz
-    vec3 normal = normalMC;
+    //TexCoords.xyz = normalMC;
     TexCoords.xyz = vertexMC.xyz;
-
-    
 
     """,
     False  # only do it once
 )
 
 
-<<<<<<< Updated upstream
-
 sphereMapper.SetGeometryShaderCode("""
-    //VTK::System::Dec
+	//VTK::System::Dec
     //VTK::PositionVC::Dec
+
     // declare coordinate transformation matrices
     
-        uniform mat4 MCDCMatrix; // - gl_modelviewprojectionmatrix
+		uniform mat4 MCDCMatrix; // - gl_modelviewprojectionmatrix
         uniform mat4 MCVCMatrix; // - gl_modelview_matrix (model to view)
         uniform mat4 WCMCMatrix; // - world to model
         uniform mat4 MCWCMatrix; // - model to world
@@ -86,6 +78,10 @@ sphereMapper.SetGeometryShaderCode("""
         uniform mat4 WCPCMatrix; // - world to projection
         uniform mat4 VCPCMatrix; // - view to projection - the other part of the camera transform
         uniform mat4 VCDCMatrix; // - projection matrix
+
+
+
+    //in vec3 normalVCVSOutput;
 
     //VTK::PrimID::Dec
 
@@ -106,123 +102,50 @@ sphereMapper.SetGeometryShaderCode("""
 
      void main(){
 
-        int i, layer;
-        float disp_delta = 1.0 / float(fur_layers);
-        float d = 0.0;
-        vec4 position;
-        for(layer = 0; layer < fur_layers; layer++)
-        {
-                //Calulate the Normal for a given face
+	    int i, layer;
+	    float disp_delta = 1.0 / float(fur_layers);
+	    float d = 0.0;
+	    vec4 position;
 
-                vec3 p0 = gl_in[0].gl_Position.xyz;
-                vec3 p1 = gl_in[1].gl_Position.xyz;
-                vec3 p2 = gl_in[2].gl_Position.xyz;
+	    for(layer = 0; layer < fur_layers; layer++)
+	    {
+	    		//Calulate the Normal for a given face
 
-                vec3 v0 = p0 - p1;
-                vec3 v1 = p2 - p1;
+	    		vec3 p0 = gl_in[0].gl_Position.xyz;
+	    		vec3 p1 = gl_in[1].gl_Position.xyz;
+	    		vec3 p2 = gl_in[2].gl_Position.xyz;
 
-                vec3 norm = cross(v1, v0);
-                norm = normalize(norm);
+	    		vec3 v0 = p0 - p1;
+	    		vec3 v1 = p2 - p1;
 
-				position = vec4(norm * d * fur_depth, 0.0);
-				vec4 normposition = normalize(position);
-				
-					gl_Position = gl_in[0].gl_Position + position;
-       				//vertexVCGSOutput = vertexVCVSOutput[0] + position;
-        			EmitVertex();
+	    		vec3 norm = cross(v1, v0);
+	    		norm = normalize(norm);
 
-        			gl_Position = gl_in[1].gl_Position +  position;
-        			//vertexVCGSOutput = vertexVCVSOutput[0] + position;
-        			EmitVertex();
+	    	// For each incoming vertex (should be three of them) 
+	    	for(i = 0; i < gl_in.length(); i++)
+	    	{
+	    		//vec3 norm = normalVCVSOutput[i].xyz;
+	    		vec4 displacement = vec4(norm * d * fur_depth, 0.0);
+	    		position = gl_in[i].gl_Position + displacement;
+	    		
+	    		//I think the issue lies here	
+	    		//gl_Position = projection_matrix * (model_matrix * position);
+	    		
+	    		gl_Position = position;
+	    		//vertexVCGSOutput = vertexVCVSOutput[i] + gl_Position;
 
-        			gl_Position = gl_in[2].gl_Position + position;
-        			//vertexVCGSOutput = vertexVCVSOutput[0] + position;
-       				EmitVertex();
+	    		//gl_Position = previous_position + MCDCMatrix * new_point
+	    		 
+	    		EmitVertex();
+	    	}
 
-            d += disp_delta;
-            EndPrimitive();
-        }
+	    	d += disp_delta;
+	    	EndPrimitive();
+	    }
 
     }
-    """
-    )
-
-=======
-# sphereMapper.SetGeometryShaderCode("""
-# 	//VTK::System::Dec
-#     //VTK::PositionVC::Dec
-
-#     // declare coordinate transformation matrices
-#     uniform mat4 MCDCMatrix; // - gl_modelviewprojectionmatrix
-#     uniform mat4 MCVCMatrix; // - gl_modelview_matrix (model to view)
-#     uniform mat4 WCMCMatrix; // - world to model
-#     uniform mat4 MCWCMatrix; // - model to world
-#     uniform mat4 MCPCMatrix; // - model to projection
-#     uniform mat4 WCVCMatrix; // - world to view - half of the camera transform
-#     uniform mat4 WCPCMatrix; // - world to projection
-#     uniform mat4 VCPCMatrix; // - view to projection - the other part of the camera transform
-#     uniform mat4 VCDCMatrix; // - projection matrix
-
-#     //VTK::PrimID::Dec
-#     //VTK::Color::Dec
-#     //VTK::Normal::Dec
-#     //VTK::Light::Dec
-#     //VTK::TCoord::Dec
-#     //VTK::Picking::Dec
-#     //VTK::DepthPeeling::Dec
-#     //VTK::Clip::Dec
-#     //VTK::Output::Dec
-
-#     layout (triangles) in;
-#     layout (triangle_strip, max_vertices = 120) out;
-
-#     int fur_layers = 30;
-#     float fur_depth = 5.0;
-
-#      void main(){
-
-# 	    int i, layer;
-# 	    float disp_delta = 1.0 / float(fur_layers);
-# 	    float d = 0.0;
-# 	    vec4 position;
-
-# 	    for(layer = 0; layer < fur_layers; layer++)
-# 	    {
-# 	    		//Calulate the Normal for a given face
-
-# 	    		vec3 p0 = gl_in[0].gl_Position.xyz;
-# 	    		vec3 p1 = gl_in[1].gl_Position.xyz;
-# 	    		vec3 p2 = gl_in[2].gl_Position.xyz;
-
-# 	    		vec3 v0 = p0 - p1;
-# 	    		vec3 v1 = p2 - p1;
-
-# 	    		vec3 norm = cross(v1, v0);
-# 	    		norm = normalize(norm);
-
-# 	    		// For each incoming vertex (should be three of them) 
-	    		
-# 	    		for(i = 0; i < gl_in.length(); i++)
-# 	    		{
-# 	 				vec4 displacement = vec4(norm * d * fur_depth, 0.0);
-# 	    			position = gl_in[i].gl_Position + displacement;
-	    			
-# 	    			//I think the issue lies here	
-# 	    			//gl_Position = projection_matrix * (model_matrix * position);
-	    			
-# 	    			gl_Position = MCDCMatrix * position;
-# 	    			vertexVCGSOutput = vertexVCVSOutput[i] + gl_Position;
-# 	    			EmitVertex();
-# 	    		}
-
-# 	    	d += disp_delta;
-# 	    	EndPrimitive();
-# 	    }
-
-#     }
-# 	"""
-# 	)
->>>>>>> Stashed changes
+	"""
+	)
 
 
 sphereMapper.SetFragmentShaderCode(
@@ -234,14 +157,14 @@ sphereMapper.SetFragmentShaderCode(
 
     uniform vec4 fur_color = vec4(0.3, 0.3, 0.3, 1.0);
 
-    in vec4 vertexVCGSOutput;
 
     void main() {
 
     	vec4 rgba = texture(texture_0, TexCoords);
     	float  t = rgba.a;
-    	//gl_FragData[0] = fur_color * vec4(1.0, 1.0, 0.3, t);
-        gl_FragData[0] = texture(texture_0, TexCoords);
+
+       	gl_FragData[0] = fur_color * vec4(1.0, 1.0, 0.3, t);
+        //gl_FragData[0] = texture(texture_0, TexCoords);
     }
     """
 )

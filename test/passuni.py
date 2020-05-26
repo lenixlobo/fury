@@ -60,6 +60,17 @@ mapper.AddShaderReplacement(
     uniform float col;
 	uniform mat4 MCVCMatrix;
 
+
+    float opS( float d1, float d2 )
+    {
+        return max(-d2, d1);
+    }
+
+    float sdSphere( vec3 p, float s )
+    {
+        return length(p)-s;
+    }
+    
     float sdTorus(vec3 p, vec2 t)
     {
     	vec2 q = vec2(length(p.xz) - t.x, p.y);
@@ -68,8 +79,11 @@ mapper.AddShaderReplacement(
 
     float map( in vec3 position)
     {
+        float d,d2;
     	float d1 = sdTorus(position, vec2(0.4, 0.1));
-    	return d1;
+        d2 = sdSphere(position, 0.25); 
+        d = min(d1, d2);
+    	return d;
     }
 
     vec3 calculateNormal( in vec3 position )
@@ -134,7 +148,7 @@ mapper.AddShaderReplacement(
     }
     else{
 
-    	fragOutput0 = vec4(col, 0, 0, 1.0);
+    	fragOutput0 = vec4(col, 0, 0, 0.3);
     }
 
 

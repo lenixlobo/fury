@@ -56,7 +56,7 @@ mapper.AddShaderReplacement(
 	"""
 	//VTK::ValuePass::Dec
 	in vec3 centeredVertexMC;
-    
+
     uniform float col;
 	uniform mat4 MCVCMatrix;
 
@@ -134,7 +134,7 @@ mapper.AddShaderReplacement(
     }
     else{
 
-    	fragOutput0 = vec4(col, 0, 0, 0.3);
+    	fragOutput0 = vec4(col, 0, 0, 1.0);
     }
 
 
@@ -148,7 +148,7 @@ mapper.AddShaderReplacement(
 @vtk.calldata_type(vtk.VTK_OBJECT)
 def vtk_shader_callback(caller, event, calldata=None):
     program = calldata
-    col = 2.0
+    col = 1.0
     if program is not None:
         program.SetUniformf('col', col)
 

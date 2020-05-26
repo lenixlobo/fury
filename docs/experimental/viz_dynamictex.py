@@ -131,7 +131,7 @@ sphereMapper.SetGeometryShaderCode("""
 	    		//I think the issue lies here	
 	    		//gl_Position = projection_matrix * (model_matrix * position);
 	    		
-	    		gl_Position = gl_in[i].gl_Position;
+	    		gl_Position = position;
 	    		//vertexVCGSOutput = vertexVCVSOutput[i] + gl_Position;
 
 	    		//gl_Position = previous_position + MCDCMatrix * new_point

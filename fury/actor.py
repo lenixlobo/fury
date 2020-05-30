@@ -2471,8 +2471,7 @@ def sdf(center):
     fs_impl_code = fs.load("sdf_impl.frag")
 
     mapper = box_actor.GetMapper()
-    mapper.MapDataArrayToVertexAttribute(
-        "center", "center", vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, -1)
+    
     mapper.AddShaderReplacement(
         vtk.vtkShader.Vertex, "//VTK::ValuePass::Dec", True,
         vs_dec_code, False)

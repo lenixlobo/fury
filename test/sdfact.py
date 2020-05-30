@@ -5,4 +5,5 @@ center=([5, 0, 0])
 sdfactor = actor.sdf(center = center)
 scene.add(sdfactor)
 
-window.show(scene)
+scene.add(actor.axes())
+window.show(scene, size=(1920,1080))

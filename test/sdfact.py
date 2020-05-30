@@ -1,5 +1,7 @@
 from fury import actor, window
 
+#Basic script to render SDF actor
+
 scene = window.Scene()
 scene.background((1.0, 0.8, 0.8))
 center=([5, 0, 0])

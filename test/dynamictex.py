@@ -22,8 +22,6 @@ for i in range(6):
 
 sphere = vtk.vtkSphereSource()
 sphere.SetCenter(0.0, 0.0, 0.0)
-sphere.SetPhiResolution(100)
-sphere.SetThetaResolution(100)
 sphere.SetRadius(3)
 
 sphereMapper = vtk.vtkOpenGLPolyDataMapper()
@@ -97,8 +95,8 @@ sphereMapper.SetGeometryShaderCode("""
     layout (triangles) in;
     layout (triangle_strip, max_vertices = 120) out;
 
-    int fur_layers = 30;
-    float fur_depth = 5.0;
+    int fur_layers = 50;
+    float fur_depth = 3.0;
 
      void main(){
 
@@ -160,10 +158,10 @@ sphereMapper.SetFragmentShaderCode(
 
     void main() {
 
-    	vec4 rgba = texture(texture_0, vertexVCGSOutput.xyz);
-    	float  t = rgba.a;
+    	//vec4 rgba = texture(texture_0, vertexVCGSOutput.xyz);
+    	//float  t = rgba.a;
 
-       	gl_FragData[0] = fur_color * vec4(1.0, 1.0, 0.3, t);
+       	gl_FragData[0] = vec4(0.3, 0.3, 0.3, 0.1);
         //gl_FragData[0] = texture(texture_0, TexCoords);
     }
     """

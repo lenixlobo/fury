@@ -2452,3 +2452,39 @@ def texture_on_sphere(rgb, theta=60, phi=60, interpolate=True):
     earthActor.SetTexture(atext)
 
     return earthActor
+
+def sdf(prim=None, center=([0, 0, 0]) ):
+    """Create a SDF actor
+    TODO: Add documentation
+    """
+    verts, faces = fp.prim_box()
+    box_actor = get_actor_from_primitive(verts, faces)
+    box_actor.SetPosition(center)
+
+    vtk_center = numpy_support.numpy_to_vtk(center)
+    vtk_center.SetName("center")
+    box_actor.GetMapper().GetInput().GetPointData().AddArray(vtk_center)
+
+    vs_dec_code = fs.load("sdf_dec.vert")
+    vs_impl_code = fs.load("sdf_impl.vert")
+    fs_dec_code = fs.load("sdf_dec.frag")
+    fs_impl_code = fs.load("sdf_impl.frag")
+
+    mapper = box_actor.GetMapper()
+    mapper.AddShaderReplacement(
+        vtk.vtkShader.Vertex, "//VTK::ValuePass::Dec", True,
+        vs_dec_code, False)
+
+    mapper.AddShaderReplacement(
+        vtk.vtkShader.Vertex, "//VTK::ValuePass::Impl", True,
+        vs_impl_code, False)
+
+    mapper.AddShaderReplacement(
+        vtk.vtkShader.Fragment, "//VTK::ValuePass::Dec", True,
+        vs_dec_code, False)
+
+    mapper.AddShaderReplacement(
+        vtk.vtkShader.Fragment, "//VTK::Light::Impl", True,
+        vs_dec_code, False)
+
+    return box_actor

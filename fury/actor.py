@@ -2453,7 +2453,7 @@ def texture_on_sphere(rgb, theta=60, phi=60, interpolate=True):
 
     return earthActor
 
-def sdf(prim=None, center=([0, 0, 0]) ):
+def sdf(center):
     """Create a SDF actor
     TODO: Add documentation
     """
@@ -2471,6 +2471,8 @@ def sdf(prim=None, center=([0, 0, 0]) ):
     fs_impl_code = fs.load("sdf_impl.frag")
 
     mapper = box_actor.GetMapper()
+    mapper.MapDataArrayToVertexAttribute(
+        "center", "center", vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, -1)
     mapper.AddShaderReplacement(
         vtk.vtkShader.Vertex, "//VTK::ValuePass::Dec", True,
         vs_dec_code, False)
@@ -2481,10 +2483,10 @@ def sdf(prim=None, center=([0, 0, 0]) ):
 
     mapper.AddShaderReplacement(
         vtk.vtkShader.Fragment, "//VTK::ValuePass::Dec", True,
-        vs_dec_code, False)
+        fs_dec_code, False)
 
     mapper.AddShaderReplacement(
         vtk.vtkShader.Fragment, "//VTK::Light::Impl", True,
-        vs_dec_code, False)
+        fs_impl_code, False)
 
     return box_actor

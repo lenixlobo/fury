@@ -1,6 +1,7 @@
 from fury import actor, window
 
 scene = window.Scene()
+scene.background((1.0, 0.8, 0.8))
 center=([5, 0, 0])
 sdfactor = actor.sdf(center = center)
 scene.add(sdfactor)

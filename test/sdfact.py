@@ -4,7 +4,7 @@ import numpy as np
 
 scene = window.Scene()
 scene.background((1.0, 0.8, 0.8))
-centers = np.array([[2, 0, 0], [0, 0, 0], [-2, 0, 0]])
+centers = np.array([[2, 0, 0], [0, 0, 0], [-2, 0, 0], [0, 2, 0],[0, -2, 0],[0, 0, -2],[0, 0, 2]])
 sdfactor = actor.sdf(centers = centers)
 scene.add(sdfactor)
 

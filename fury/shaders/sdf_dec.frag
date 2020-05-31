@@ -13,7 +13,7 @@ float sdTorus(vec3 p, vec2 t)
 
 float map( in vec3 position)
 {
-    float d1 = sdTorus(position, vec2(0.4, 0.1));
+    float d1 = sdTorus(position, vec2(0.2, 0.05));
     return d1;
 }
 

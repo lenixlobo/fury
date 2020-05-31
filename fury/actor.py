@@ -2453,17 +2453,27 @@ def texture_on_sphere(rgb, theta=60, phi=60, interpolate=True):
 
     return earthActor
 
-def sdf(center):
+def sdf(centers):
     """Create a SDF actor
     TODO: Add documentation
     """
     verts, faces = fp.prim_box()
-    box_actor = get_actor_from_primitive(verts, faces)
-    box_actor.SetPosition(center)
 
-    vtk_center = numpy_support.numpy_to_vtk(center)
+    scale = 1
+    colors = np.random.rand(3, 3) * 255
+
+    repeated = fp.repeat_primitive(verts, faces, centers=centers, colors=colors, scale=scale)
+    
+    rep_verts, rep_faces, rep_colors, rep_centers = repeated
+    
+    #box_actor = get_actor_from_primitive(verts, faces)
+    box_actor = get_actor_from_primitive(rep_verts, rep_faces, rep_colors)
+
+    vtk_center = numpy_support.numpy_to_vtk(rep_centers)
+    vtk_center.SetNumberOfComponents(3)
     vtk_center.SetName("center")
     box_actor.GetMapper().GetInput().GetPointData().AddArray(vtk_center)
+
 
     vs_dec_code = fs.load("sdf_dec.vert")
     vs_impl_code = fs.load("sdf_impl.vert")
@@ -2471,7 +2481,8 @@ def sdf(center):
     fs_impl_code = fs.load("sdf_impl.frag")
 
     mapper = box_actor.GetMapper()
-    
+    mapper.MapDataArrayToVertexAttribute(
+        "center", "center", vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, -1)
     mapper.AddShaderReplacement(
         vtk.vtkShader.Vertex, "//VTK::ValuePass::Dec", True,
         vs_dec_code, False)

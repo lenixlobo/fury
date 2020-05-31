@@ -18,8 +18,8 @@ float t = castRay(ro.xyz, rd);
     
 if(t < 20.0)
 {
-    vec3 pos = ro.xyz + t * rd;
-    vec3 norm = calculateNormal(pos);
+    vec3 position = ro.xyz + t * rd;
+    vec3 norm = calculateNormal(position);
 
     fragOutput0 = vec4( norm, 1.0);
     	

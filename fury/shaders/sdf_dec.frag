@@ -34,7 +34,6 @@ float castRay(in vec3 ro, vec3 rd)
     for(int i=0; i<400; i++){
 
     	vec3 position = ro + t * rd;
-    	vec3 norm = calculateNormal(position);
     	
     	float  h = map(position);
     	if(h<0.001) break;

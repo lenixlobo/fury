@@ -2455,7 +2455,12 @@ def texture_on_sphere(rgb, theta=60, phi=60, interpolate=True):
 
 def sdf(centers, colors=(255, 0, 0)):
     """Create a SDF actor
-    TODO: Add documentation
+    Parameters
+    ----------
+    centers : ndarray, shape (N, 3)
+        SDF primitive positions
+    colors : ndarray (N,3) or (N, 4) or tuple (3,) or tuple (4,)
+        RGB or RGBA (for opacity) R, G, B and A should be at the range [0, 1]
     """
     verts, faces = fp.prim_box()
 

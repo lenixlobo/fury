@@ -2453,7 +2453,7 @@ def texture_on_sphere(rgb, theta=60, phi=60, interpolate=True):
 
     return earthActor
 
-def sdf(centers, colors=(255, 0, 0)):
+def sdf(centers, colors=(255, 0, 0), scale=1):
     """Create a SDF actor
     Parameters
     ----------
@@ -2463,8 +2463,6 @@ def sdf(centers, colors=(255, 0, 0)):
         RGB or RGBA (for opacity) R, G, B and A should be at the range [0, 1]
     """
     verts, faces = fp.prim_box()
-
-    scale = 1
 
     repeated = fp.repeat_primitive(verts, faces, centers=centers, colors=colors, scale=scale)
     

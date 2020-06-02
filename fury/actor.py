@@ -2453,7 +2453,7 @@ def texture_on_sphere(rgb, theta=60, phi=60, interpolate=True):
 
     return earthActor
 
-def sdf(centers, colors=(255, 0, 0), scale=1):
+def sdf(centers, directions=(1, 0, 0), colors=(255, 0, 0)):
     """Create a SDF actor
     Parameters
     ----------
@@ -2461,10 +2461,12 @@ def sdf(centers, colors=(255, 0, 0), scale=1):
         SDF primitive positions
     colors : ndarray (N,3) or (N, 4) or tuple (3,) or tuple (4,)
         RGB or RGBA (for opacity) R, G, B and A should be at the range [0, 1]
+    directions : ndarray, shape (N, 3)
+        The orientation vector of the cube.
     """
     verts, faces = fp.prim_box()
 
-    repeated = fp.repeat_primitive(verts, faces, centers=centers, colors=colors, scale=scale)
+    repeated = fp.repeat_primitive(verts, faces, centers=centers, colors=colors, directions=directions)
     
     rep_verts, rep_faces, rep_colors, rep_centers = repeated
     

@@ -2,8 +2,14 @@
 
 //VTK::ValuePass::Dec
 in vec3 centeredVertexMC;
+uniform float prim;
 
 uniform mat4 MCVCMatrix;
+
+float sdSphere( vec3 p, float s )
+{
+    return length(p)-s;
+}
 
 float sdTorus(vec3 p, vec2 t)
 {
@@ -13,7 +19,14 @@ float sdTorus(vec3 p, vec2 t)
 
 float map( in vec3 position)
 {
-    float d1 = sdTorus(position, vec2(0.4, 0.1));
+	float d1;
+		if(prim==1.0){
+			d1 = sdSphere(position, 0.25);
+    	}
+    	else if(prim==2.0){
+    	
+    		d1 = sdTorus(position, vec2(0.4, 0.1));
+    	}
     return d1;
 }
 

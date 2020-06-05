@@ -5,6 +5,9 @@ in vec3 centeredVertexMC;
 uniform float prim;
 
 uniform mat4 MCVCMatrix;
+uniform mat4 MCWCMatrix;
+uniform mat3 WCVCMatrix;
+
 
 float sdSphere( vec3 p, float s )
 {

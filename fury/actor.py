@@ -2463,6 +2463,8 @@ def sdf(centers, directions=(1, 0, 0), colors=(255, 0, 0), primitve='Torus'):
         RGB or RGBA (for opacity) R, G, B and A should be at the range [0, 1]
     directions : ndarray, shape (N, 3)
         The orientation vector of the cube.
+    primitive : String 
+        The Primitive of choice to be rendered
     """
 
     prims = {'Sphere':1.0, 'Torus':2.0}
@@ -2489,6 +2491,7 @@ def sdf(centers, directions=(1, 0, 0), colors=(255, 0, 0), primitve='Torus'):
     mapper = box_actor.GetMapper()
     mapper.MapDataArrayToVertexAttribute(
         "center", "center", vtk.vtkDataObject.FIELD_ASSOCIATION_POINTS, -1)
+
     mapper.AddShaderReplacement(
         vtk.vtkShader.Vertex, "//VTK::ValuePass::Dec", True,
         vs_dec_code, False)

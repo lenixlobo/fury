@@ -2534,8 +2534,8 @@ def sdf_sh(centers, directions=(1, 0, 0), colors=(255, 0, 0), scale=1):
     vtk_center.SetName("center")
     box_actor.GetMapper().GetInput().GetPointData().AddArray(vtk_center)
 
-    vs_dec_code = fs.load("sdf_dec.vert")
-    vs_impl_code = fs.load("sdf_impl.vert")
+    vs_dec_code = fs.load("sdfsh_dec.vert")
+    vs_impl_code = fs.load("sdfsh_impl.vert")
     fs_dec_code = fs.load("sdfsh_dec.frag")
     fs_impl_code = fs.load("sdfsh_impl.frag")
 

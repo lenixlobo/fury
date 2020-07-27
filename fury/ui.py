@@ -1,5 +1,6 @@
-from _warnings import warn
 from collections import OrderedDict
+from warnings import warn
+from numbers import Number
 
 import numpy as np
 import vtk
@@ -14,6 +15,45 @@ from fury.actor import grid
 
 
 TWO_PI = 2 * np.pi
+
+
+def clip_overflow(textblock, width):
+    """Clips overflowing text of TextBlock2D with respect to width.
+
+    Parameters
+    ----------
+    textblock : TextBlock2D
+        The textblock object whose text needs to be clipped.
+    width : int
+        Required width of the clipped text.
+
+    Returns
+    -------
+    clipped text : str
+        Clipped version of the text.
+    """
+    original_str = textblock.message
+    start_ptr = 0
+    end_ptr = len(original_str)
+    prev_bg = textblock.have_bg
+    textblock.have_bg = False
+
+    if textblock.size[0] == width or textblock.size[0] <= width:
+        textblock.have_bg = prev_bg
+        return original_str
+
+    while start_ptr < end_ptr:
+        mid_ptr = (start_ptr + end_ptr)//2
+        textblock.message = original_str[:mid_ptr] + "..."
+        if textblock.size[0] < width:
+            start_ptr = mid_ptr
+        elif textblock.size[0] > width:
+            end_ptr = mid_ptr
+
+        if mid_ptr == (start_ptr + end_ptr)//2 or\
+           textblock.size[0] == width:
+            textblock.have_bg = prev_bg
+            return textblock.message
 
 
 class UI(object, metaclass=abc.ABCMeta):
@@ -1081,11 +1121,13 @@ class TextBlock2D(UI):
         Makes text italicised.
     shadow : bool
         Adds text shadow.
+    size : (int, int)
+        Size (width, height) in pixels of the text bounding box.
     """
 
     def __init__(self, text="Text Block", font_size=18, font_family='Arial',
                  justification='left', vertical_justification="bottom",
-                 bold=False, italic=False, shadow=False,
+                 bold=False, italic=False, shadow=False, size=None,
                  color=(1, 1, 1), bg_color=None, position=(0, 0)):
         """
         Parameters
@@ -1112,11 +1154,18 @@ class TextBlock2D(UI):
             Makes text italicised.
         shadow : bool
             Adds text shadow.
+        size : (int, int)
+            Size (width, height) in pixels of the text bounding box.
         """
         super(TextBlock2D, self).__init__(position=position)
+        self.scene = None
+        self.have_bg = bool(bg_color)
+        if size is not None:
+            self.resize(size)
+        else:
+            self.font_size = font_size
         self.color = color
         self.background_color = bg_color
-        self.font_size = font_size
         self.font_family = font_family
         self.justification = justification
         self.bold = bold
@@ -1127,16 +1176,27 @@ class TextBlock2D(UI):
 
     def _setup(self):
         self.actor = vtk.vtkTextActor()
-        self._background = None  # For VTK < 7
+        self.actor.GetPosition2Coordinate().SetCoordinateSystemToViewport()
+        self.background = Rectangle2D()
         self.handle_events(self.actor)
+
+    def resize(self, size):
+        """Resize TextBlock2D.
+
+        Parameters
+        ----------
+        size : (int, int)
+            Text bounding box size(width, height) in pixels.
+        """
+        if self.have_bg:
+            self.background.resize(size)
+        self.actor.SetTextScaleModeToProp()
+        self.actor.SetPosition2(*size)
 
     def _get_actors(self):
         """ Get the actors composing this UI component.
         """
-        if self._background is not None:
-            return [self.actor, self._background]
-
-        return [self.actor]
+        return [self.actor] + self.background.actors
 
     def _add_to_scene(self, scene):
         """ Add all subcomponents or VTK props that compose this UI component.
@@ -1145,10 +1205,12 @@ class TextBlock2D(UI):
         ----------
         scene : scene
         """
-        if self._background is not None:
-            scene.add(self._background)
-
-        scene.add(self.actor)
+        self.scene = scene
+        if self.have_bg and not self.actor.GetTextScaleMode():
+            size = np.zeros(2)
+            self.actor.GetSize(scene, size)
+            self.background.resize(size)
+        scene.add(self.background, self.actor)
 
     @property
     def message(self):
@@ -1192,7 +1254,18 @@ class TextBlock2D(UI):
         size : int
             Text font size.
         """
+        self.actor.SetTextScaleModeToNone()
         self.actor.GetTextProperty().SetFontSize(size)
+
+        if self.scene is not None and self.have_bg:
+            bb_size = np.zeros(2)
+            self.actor.GetSize(self.scene, bb_size)
+            bg_size = self.background.size
+            if bb_size[0] > bg_size[0] or bb_size[1] > bg_size[1]:
+                warn("Font size exceeds background bounding box."
+                     " Font Size will not be updated.", RuntimeWarning)
+                self.actor.SetTextScaleModeToProp()
+                self.actor.SetPosition2(*bg_size)
 
     @property
     def font_family(self):
@@ -1396,10 +1469,10 @@ class TextBlock2D(UI):
             If None, there no background color.
             Otherwise, background color in RGB.
         """
-        if self.actor.GetTextProperty().GetBackgroundOpacity() == 0:
+        if not self.have_bg:
             return None
 
-        return self.actor.GetTextProperty().GetBackgroundColor()
+        return self.background.color
 
     @background_color.setter
     def background_color(self, color):
@@ -1411,14 +1484,15 @@ class TextBlock2D(UI):
             If None, remove background.
             Otherwise, RGB values (must be between 0-1).
         """
-
         if color is None:
             # Remove background.
-            self.actor.GetTextProperty().SetBackgroundOpacity(0.)
+            self.have_bg = False
+            self.background.set_visibility(False)
 
         else:
-            self.actor.GetTextProperty().SetBackgroundColor(*color)
-            self.actor.GetTextProperty().SetBackgroundOpacity(1.)
+            self.have_bg = True
+            self.background.set_visibility(True)
+            self.background.color = color
 
     def _set_position(self, position):
         """ Set text actor position.
@@ -1429,13 +1503,23 @@ class TextBlock2D(UI):
             The new position. (x, y) in pixels.
         """
         self.actor.SetPosition(*position)
-        if self._background is not None:
-            self._background.SetPosition(*self.actor.GetPosition())
+        self.background.position = position
 
     def _get_size(self):
-        if self._background is not None:
-            return self._background.size
-        return self.font_size * 1.2, self.font_size * 1.2
+        if self.have_bg:
+            return self.background.size
+
+        if not self.actor.GetTextScaleMode():
+            if self.scene is not None:
+                size = np.zeros(2)
+                self.actor.GetSize(self.scene, size)
+                return size
+            else:
+                warn("TextBlock2D must be added to the scene before "
+                     "querying its size while TextScaleMode is set to None.",
+                     RuntimeWarning)
+
+        return self.actor.GetPosition2()
 
 
 class TextBox2D(UI):
@@ -3696,6 +3780,8 @@ class ListBox2D(UI):
         scene : scene
         """
         self.panel.add_to_scene(scene)
+        for slot in self.slots:
+            clip_overflow(slot.textblock, self.slot_width)
 
     def _get_size(self):
         return self.panel.size
@@ -3839,16 +3925,9 @@ class ListBox2D(UI):
         # Populate slots according to the view.
         for i, choice in enumerate(values_to_show):
             slot = self.slots[i]
-            char_width = slot.textblock.size[0] - self.margin
-            permissible_chars = int(self.slot_width)//char_width
-            total_chars = len(str(choice))
-            if total_chars > permissible_chars:
-                excess_chars = total_chars - permissible_chars
-                wrapped_choice = choice[:(-excess_chars) + 3] + "..."
-                slot.element = choice
-                slot.textblock.message = wrapped_choice
-            else:
-                slot.element = choice
+            slot.element = choice
+            if slot.textblock.scene is not None:
+                clip_overflow(slot.textblock, self.slot_width)
             slot.set_visibility(True)
             if slot.element in self.selected:
                 slot.select()
@@ -4279,6 +4358,303 @@ class FileMenu2D(UI):
                 self.set_slot_colors()
         i_ren.force_render()
         i_ren.event.abort()
+
+
+class ComboBox2D(UI):
+    """ UI element to create drop-down menus.
+
+    Attributes
+    ----------
+    selection_box: :class: 'TextBox2D'
+        Display selection and placeholder text.
+    drop_down_button: :class: 'Button2D'
+        Button to show or hide menu.
+    drop_down_menu: :class: 'ListBox2D'
+        Container for item list.
+    """
+
+    def __init__(self, items=[], position=(0, 0), size=(300, 200),
+                 placeholder="Choose selection...", draggable=True,
+                 selection_text_color=(0, 0, 0), selection_bg_color=(1, 1, 1),
+                 menu_text_color=(0.2, 0.2, 0.2),
+                 selected_color=(0.9, 0.6, 0.6),
+                 unselected_color=(0.6, 0.6, 0.6),
+                 scroll_bar_active_color=(0.6, 0.2, 0.2),
+                 scroll_bar_inactive_color=(0.9, 0.0, 0.0), menu_opacity=1.,
+                 reverse_scrolling=False, font_size=20, line_spacing=1.4):
+        """
+
+        Parameters
+        ----------
+        items: list(string)
+            List of items to be displayed as choices.
+        position : (float, float)
+            Absolute coordinates (x, y) of the lower-left corner of this
+            UI component.
+        size : (int, int)
+            Width and height in pixels of this UI component.
+        placeholder : str
+            Holds the default text to be displayed.
+        draggable: {True, False}
+            Whether the UI element is draggable or not.
+        selection_text_color : tuple of 3 floats
+            Color of the selected text to be displayed.
+        selection_bg_color : tuple of 3 floats
+            Background color of the selection text.
+        menu_text_color : tuple of 3 floats.
+            Color of the options displayed in drop down menu.
+        selected_color : tuple of 3 floats.
+            Background color of the selected option in drop down menu.
+        unselected_color : tuple of 3 floats.
+            Background color of the unselected option in drop down menu.
+        scroll_bar_active_color : tuple of 3 floats.
+            Color of the scrollbar when in active use.
+        scroll_bar_inactive_color : tuple of 3 floats.
+            Color of the scrollbar when inactive.
+        reverse_scrolling: {True, False}
+            If True, scrolling up will move the list of files down.
+        font_size: int
+            The font size of selected text in pixels.
+        line_spacing: float
+            Distance between drop down menu's items in pixels.
+        """
+        self.items = items.copy()
+        self.font_size = font_size
+        self.reverse_scrolling = reverse_scrolling
+        self.line_spacing = line_spacing
+        self.panel_size = size
+        self._selection = placeholder
+        self._menu_visibility = False
+        self._selection_ID = None
+        self.draggable = draggable
+        self.sel_text_color = selection_text_color
+        self.sel_bg_color = selection_bg_color
+        self.menu_txt_color = menu_text_color
+        self.selected_color = selected_color
+        self.unselected_color = unselected_color
+        self.scroll_active_color = scroll_bar_active_color
+        self.scroll_inactive_color = scroll_bar_inactive_color
+        self.menu_opacity = menu_opacity
+
+        # Define subcomponent sizes.
+        self.text_block_size = (int(0.8*size[0]), int(0.3*size[1]))
+        self.drop_menu_size = (size[0], int(0.7*size[1]))
+        self.drop_button_size = (int(0.2*size[0]), int(0.3*size[1]))
+
+        self._icon_files = [
+            ('left', read_viz_icons(fname='circle-left.png')),
+            ('down', read_viz_icons(fname='circle-down.png'))]
+
+        super(ComboBox2D, self).__init__()
+        self.position = position
+
+    def _setup(self):
+        """ Setup this UI component.
+        Create the ListBox filled with empty slots (ListBoxItem2D).
+        Create TextBox with placeholder text.
+        Create Button for toggling drop down menu.
+        """
+        self.selection_box = TextBlock2D(
+            size=self.text_block_size, color=self.sel_text_color,
+            bg_color=self.sel_bg_color, text=self._selection)
+
+        self.drop_down_button = Button2D(
+            icon_fnames=self._icon_files, size=self.drop_button_size)
+
+        self.drop_down_menu = ListBox2D(
+            values=self.items, multiselection=False,
+            font_size=self.font_size, line_spacing=self.line_spacing,
+            text_color=self.menu_txt_color, selected_color=self.selected_color,
+            unselected_color=self.unselected_color,
+            scroll_bar_active_color=self.scroll_active_color,
+            scroll_bar_inactive_color=self.scroll_inactive_color,
+            background_opacity=self.menu_opacity,
+            reverse_scrolling=self.reverse_scrolling, size=self.drop_menu_size)
+
+        self.drop_down_menu.set_visibility(False)
+
+        self.panel = Panel2D(self.panel_size, opacity=0.0)
+        self.panel.add_element(self.selection_box, (0.001, 0.7))
+        self.panel.add_element(self.drop_down_button, (0.8, 0.7))
+        self.panel.add_element(self.drop_down_menu, (0, 0))
+
+        if self.draggable:
+            self.drop_down_button.on_left_mouse_button_dragged =\
+                self.left_button_dragged
+            self.drop_down_menu.panel.background.on_left_mouse_button_dragged\
+                = self.left_button_dragged
+            self.selection_box.on_left_mouse_button_dragged =\
+                self.left_button_dragged
+            self.selection_box.background.on_left_mouse_button_dragged =\
+                self.left_button_dragged
+
+            self.drop_down_button.on_left_mouse_button_pressed =\
+                self.left_button_pressed
+            self.drop_down_menu.panel.background.on_left_mouse_button_pressed\
+                = self.left_button_pressed
+            self.selection_box.on_left_mouse_button_pressed =\
+                self.left_button_pressed
+            self.selection_box.background.on_left_mouse_button_pressed =\
+                self.left_button_pressed
+        else:
+            self.panel.background.on_left_mouse_button_dragged =\
+                lambda i_ren, _obj, _comp: i_ren.force_render
+            self.drop_down_menu.panel.background.on_left_mouse_button_dragged\
+                = lambda i_ren, _obj, _comp: i_ren.force_render
+
+        # Handle mouse wheel events on the slots.
+        for slot in self.drop_down_menu.slots:
+            slot.add_callback(
+                slot.textblock.actor, "LeftButtonPressEvent",
+                self.select_option_callback)
+
+            slot.add_callback(
+                slot.background.actor, "LeftButtonPressEvent",
+                self.select_option_callback)
+
+            self.drop_down_button.on_left_mouse_button_clicked = \
+                self.menu_toggle_callback
+
+        # Offer some standard hooks to the user.
+        self.on_change = lambda ui: None
+
+    def _get_actors(self):
+        """ Get the actors composing this UI component.
+        """
+        return self.panel.actors
+
+    def resize(self, size):
+        """ Resizes ComboBox2D.
+
+        Parameters
+        ----------
+        size : (int, int)
+            ComboBox size(width, height) in pixels.
+        """
+        self.panel.resize(size)
+
+        self.text_block_size = (int(0.8*size[0]), int(0.3*size[1]))
+        self.drop_menu_size = (size[0], int(0.7*size[1]))
+        self.drop_button_size = (int(0.2*size[0]), int(0.3*size[1]))
+
+        self.panel.update_element(self.selection_box, (0.001, 0.7))
+        self.panel.update_element(self.drop_down_button, (0.8, 0.7))
+        self.panel.update_element(self.drop_down_menu, (0, 0))
+
+        self.drop_down_button.resize(self.drop_button_size)
+        self.drop_down_menu.resize(self.drop_menu_size)
+        self.selection_box.resize(self.text_block_size)
+
+    def _set_position(self, coords):
+        """ Position the lower-left corner of this UI component.
+
+        Parameters
+        ----------
+        coords: (float, float)
+            Absolute pixel coordinates (x, y).
+        """
+        self.panel.position = coords
+
+    def _add_to_scene(self, scene):
+        """ Add all subcomponents or VTK props that compose this UI component.
+
+        Parameters
+        ----------
+        scene : scene
+        """
+        self.panel.add_to_scene(scene)
+        self.selection_box.font_size = self.font_size
+
+    def _get_size(self):
+        return self.panel.size
+
+    @property
+    def selected_text(self):
+        return self._selection
+
+    @property
+    def selected_text_index(self):
+        return self._selection_ID
+
+    def append_item(self, *items):
+        """ Append additional options to the menu.
+
+        Parameters
+        ----------
+        items : n-d list, n-d tuple, Number or str
+            Additional options.
+        """
+        for item in items:
+            if isinstance(item, (list, tuple)):
+                # Useful when n-d lists/tuples are used.
+                self.append_item(*item)
+            elif isinstance(item, (str, Number)):
+                self.items.append(str(item))
+            else:
+                raise TypeError("Invalid item instance {}".format(type(item)))
+
+        self.drop_down_menu.update_scrollbar()
+        if not self._menu_visibility:
+            self.drop_down_menu.scroll_bar.set_visibility(False)
+
+    def select_option_callback(self, i_ren, _obj, listboxitem):
+        """ Callback to select the appropriate option
+
+        Parameters
+        ----------
+        i_ren: :class:`CustomInteractorStyle`
+        obj: :class:`vtkActor`
+            The picked actor
+        listboxitem: :class:`ListBoxItem2D`
+        """
+
+        # Set the Text of TextBlock2D to the text of listboxitem
+        self._selection = listboxitem.element
+        self._selection_ID = self.items.index(self._selection)
+
+        self.selection_box.message = self._selection
+        clip_overflow(self.selection_box,
+                        self.selection_box.background.size[0])
+        self.drop_down_menu.set_visibility(False)
+        self._menu_visibility = False
+
+        self.drop_down_button.next_icon()
+
+        self.on_change(self)
+
+        i_ren.force_render()
+        i_ren.event.abort()
+
+    def menu_toggle_callback(self, i_ren, _vtkactor, _combobox):
+        """ Callback to toggle visibility of drop down menu list.
+
+        Parameters
+        ----------
+        i_ren : :class:`CustomInteractorStyle`
+        vtkactor : :class:`vtkActor`
+            The picked actor
+        combobox : :class:`ComboBox2D`
+        """
+
+        self._menu_visibility = not self._menu_visibility
+        self.drop_down_menu.set_visibility(self._menu_visibility)
+
+        self.drop_down_button.next_icon()
+
+        i_ren.force_render()
+        i_ren.event.abort()  # Stop propagating the event.
+
+    def left_button_pressed(self, i_ren, _obj, _sub_component):
+        click_pos = np.array(i_ren.event.position)
+        self._click_position = click_pos
+        i_ren.event.abort()  # Stop propagating the event.
+
+    def left_button_dragged(self, i_ren, _obj, _sub_component):
+        click_position = np.array(i_ren.event.position)
+        change = click_position - self._click_position
+        self.panel.position += change
+        self._click_position = click_position
+        i_ren.force_render()
 
 
 class GridUI(UI):

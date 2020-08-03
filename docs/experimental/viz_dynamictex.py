@@ -10,7 +10,6 @@ scene.background((1.0, 0.8, 0.8))
 
 #Create a Texture
 texture = vtk.vtkTexture()
-texture.CubeMapOn()
 #Noise texture
 arr =  np.random.randn(128, 128, 4)
 
@@ -54,9 +53,9 @@ sphereMapper.AddShaderReplacement(
     """
     //VTK::PositionVC::Impl  // we still want the default
     vec3 camPos = -MCVCMatrix[3].xyz * mat3(MCVCMatrix);
-    //TexCoords.xyz = reflect(vertexMC.xyz - camPos, normalize(normalMC));
+    TexCoords.xyz = reflect(vertexMC.xyz - camPos, normalize(normalMC));
     //TexCoords.xyz = normalMC;
-    TexCoords.xyz = vertexMC.xyz;
+    //TexCoords.xyz = vertexMC.xyz;
 
     """,
     False  # only do it once
@@ -126,7 +125,7 @@ sphereMapper.SetGeometryShaderCode("""
 	    	{
 	    		//vec3 norm = normalVCVSOutput[i].xyz;
 	    		vec4 displacement = vec4(norm * d * fur_depth, 0.0);
-	    		position = gl_in[i].gl_Position + displacement;
+	    		position = gl_in[i].gl_Position + MCVCMatrix * displacement;
 	    		
 	    		//I think the issue lies here	
 	    		//gl_Position = projection_matrix * (model_matrix * position);
@@ -153,14 +152,14 @@ sphereMapper.SetFragmentShaderCode(
     //VTK::System::Dec  // always start with this line
     //VTK::Output::Dec  // always have this line in your FS
     in vec3 TexCoords;
-    uniform samplerCube texture_0;
+    uniform sampler2D texture_0;
     in vec4 vertexVCGSOutput;
     uniform vec4 fur_color = vec4(0.3, 0.3, 0.3, 1.0);
 
 
     void main() {
 
-    	vec4 rgba = texture(texture_0, vertexVCGSOutput.xyz);
+    	vec4 rgba = texture(texture_0, vertexVCGSOutput.xy);
     	float  t = rgba.a;
 
        	gl_FragData[0] = fur_color * vec4(1.0, 1.0, 0.3, t);
